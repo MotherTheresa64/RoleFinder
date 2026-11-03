@@ -55,6 +55,16 @@ const stats = {
 
 await writeFile(resolve(DIST, 'data', 'stats.json'), JSON.stringify(stats));
 
+// The client uses this for the hero line and the "Updated 3h ago" stamp.
+const meta = {
+  builtAt: stats.generated,
+  total: stats.total,
+  remote: stats.remote,
+  strong: stats.strong,
+  boards: new Set(jobs.map((job) => job.company)).size,
+};
+await writeFile(resolve(DIST, 'data', 'meta.json'), JSON.stringify(meta));
+
 // Tells the client there is no API behind this build.
 await writeFile(resolve(DIST, 'config.json'), JSON.stringify({ api: false }));
 

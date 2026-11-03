@@ -14,7 +14,7 @@
     "build": "node scripts/build-static.mjs",
     "build:live": "npm run ingest && npm run build",
     "preview": "node scripts/serve-static.mjs",
-    "check": "node --check src/server.mjs && node --check src/ingest.mjs && node --check src/db.mjs && node --check src/sources.mjs && node --check src/score.mjs && node --check scripts/build-static.mjs && node --check scripts/serve-static.mjs",
+    "check": "node --check src/server.mjs && node --check src/ingest.mjs && node --check src/db.mjs && node --check src/sources.mjs && node --check src/score.mjs && node --check scripts/build-static.mjs && node --check scripts/serve-static.mjs && node --check public/app.js",
     "deploy:firebase": "npm run build && npx --yes firebase-tools deploy --only hosting"
   }
 }

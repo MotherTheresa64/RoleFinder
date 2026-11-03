@@ -3,121 +3,209 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b0d12" />
+    <meta name="theme-color" content="#080a0f" />
     <meta
       name="description"
-      content="RoleFinder: postings from 33 company job boards, ranked against one person's stack. Updated daily."
+      content="RoleFinder: open roles from 33 company boards, ranked against one stack and refreshed daily."
     />
     <title>RoleFinder</title>
     <link rel="manifest" href="/manifest.json" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="aura" aria-hidden="true"></div>
+    <div class="aurora" aria-hidden="true"></div>
 
-    <div class="page">
-      <header class="top">
-        <div class="brand">
-          <span class="mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="6.5" />
-              <path d="M15.8 15.8 21 21" stroke-linecap="round" />
-            </svg>
-          </span>
-          <div class="brand-text">
-            <h1>RoleFinder</h1>
-            <p>Open roles from 33 company boards, ranked against one stack.</p>
+    <div class="shell">
+      <header class="hero">
+        <div class="hero-top">
+          <div class="brand">
+            <span class="mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">
+                <circle cx="11" cy="11" r="6.4" />
+                <path d="M15.7 15.7 21 21" stroke-linecap="round" />
+              </svg>
+            </span>
+            <span class="brand-name">RoleFinder</span>
+          </div>
+
+          <div class="stamps">
+            <span class="stamp">
+              <span class="pulse" aria-hidden="true"></span>
+              <span id="freshnessLabel">Updated daily</span>
+            </span>
+            <span class="stamp quiet">Personal build</span>
           </div>
         </div>
-        <div class="stats" id="stats" aria-live="polite"></div>
+
+        <h1>
+          <span id="heroStrong">—</span>
+          <span class="hero-unit">strong matches</span>
+        </h1>
+        <p class="hero-sub" id="heroSub">Loading today's postings…</p>
       </header>
 
-      <section class="filters" aria-label="Filters">
-        <div class="search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <circle cx="11" cy="11" r="6.5" />
-            <path d="M15.8 15.8 21 21" stroke-linecap="round" />
-          </svg>
-          <input id="q" type="search" placeholder="Search role, company, or team" autocomplete="off" />
-        </div>
-
-        <div class="chips">
-          <label class="chip">
-            <input id="remote" type="checkbox" />
-            <span>Remote only</span>
+      <div class="layout">
+        <aside class="rail" aria-label="Filters">
+          <label class="search" for="q">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.4" />
+              <path d="M15.7 15.7 21 21" stroke-linecap="round" />
+            </svg>
+            <input id="q" type="search" placeholder="Role, company, team…" autocomplete="off" />
           </label>
-          <label class="chip">
-            <input id="hideApplied" type="checkbox" checked />
-            <span>Hide applied</span>
-          </label>
-          <label class="chip">
-            <input id="hideSenior" type="checkbox" checked />
-            <span>Hide senior</span>
-          </label>
-        </div>
 
-        <div class="match-filter">
-          <label for="minScore">Minimum match</label>
-          <input id="minScore" type="range" min="0" max="60" step="5" value="0" />
-          <output id="scoreOut" for="minScore">Any</output>
-        </div>
+          <div class="rail-group">
+            <p class="rail-label">Show</p>
+            <div class="chips">
+              <label class="chip">
+                <input id="remote" type="checkbox" />
+                <span>Remote only</span>
+              </label>
+              <label class="chip">
+                <input id="hideApplied" type="checkbox" checked />
+                <span>Hide applied</span>
+              </label>
+              <label class="chip">
+                <input id="hideSenior" type="checkbox" checked />
+                <span>Hide senior</span>
+              </label>
+            </div>
+          </div>
 
-        <select id="status" aria-label="Filter by application status">
-          <option value="">Any status</option>
-          <option value="applied">Applied</option>
-          <option value="interview">Interview</option>
-          <option value="rejected">Rejected</option>
-          <option value="offer">Offer</option>
-        </select>
-      </section>
+          <div class="rail-group">
+            <div class="rail-row">
+              <label class="rail-label" for="minScore">Minimum match</label>
+              <output id="scoreOut" for="minScore">Any</output>
+            </div>
+            <input id="minScore" type="range" min="0" max="60" step="5" value="0" />
+          </div>
 
-      <p class="result-line"><span id="resultCount"></span></p>
+          <div class="rail-group">
+            <label class="rail-label" for="status">Application status</label>
+            <select id="status">
+              <option value="">Any status</option>
+              <option value="applied">Applied</option>
+              <option value="interview">Interview</option>
+              <option value="rejected">Rejected</option>
+              <option value="offer">Offer</option>
+            </select>
+          </div>
 
-      <main id="list" class="list"></main>
+          <button id="resetFilters" class="reset" type="button" hidden>Reset filters</button>
 
-      <div id="empty" class="empty" hidden>
-        <p class="empty-title">Nothing matches those filters</p>
-        <p>Try clearing the search, or run <code>npm run ingest</code> for a fresh pull.</p>
+          <p class="rail-note">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <rect x="4.5" y="10" width="15" height="10" rx="2.5" />
+              <path d="M8 10V7.5a4 4 0 0 1 8 0V10" />
+            </svg>
+            Status is saved in this browser. Applied roles stay out of the list.
+          </p>
+        </aside>
+
+        <section class="results" aria-label="Postings">
+          <p class="result-line" id="resultCount" aria-live="polite">Loading…</p>
+
+          <div id="skeleton" class="list skeleton" aria-hidden="true">
+            <div class="skel">
+              <div class="skel-tile"></div>
+              <div class="skel-lines"><i></i><i></i><i class="short"></i></div>
+            </div>
+            <div class="skel">
+              <div class="skel-tile"></div>
+              <div class="skel-lines"><i></i><i></i><i class="short"></i></div>
+            </div>
+            <div class="skel">
+              <div class="skel-tile"></div>
+              <div class="skel-lines"><i></i><i></i><i class="short"></i></div>
+            </div>
+            <div class="skel">
+              <div class="skel-tile"></div>
+              <div class="skel-lines"><i></i><i></i><i class="short"></i></div>
+            </div>
+            <div class="skel">
+              <div class="skel-tile"></div>
+              <div class="skel-lines"><i></i><i></i><i class="short"></i></div>
+            </div>
+          </div>
+
+          <div id="list" class="list"></div>
+
+          <div id="empty" class="empty" hidden>
+            <span class="empty-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                <circle cx="11" cy="11" r="6.4" />
+                <path d="M15.7 15.7 21 21" stroke-linecap="round" />
+              </svg>
+            </span>
+            <p class="empty-title">Nothing matches those filters</p>
+            <p class="empty-text">Try a broader search, or reset the filters to see the full list.</p>
+          </div>
+        </section>
       </div>
 
       <footer class="foot">
         <p>
-          Personal tool. Postings and links are public, but the ranking is tuned to one
-          profile — so it is not optimized for anyone else. Refreshed daily at 06:17 UTC.
+          <b>RoleFinder</b> — a personal job search, not a job board. The postings and links
+          are public; the ranking is tuned to one profile.
         </p>
-        <button id="introOpen" class="link" type="button">What is this?</button>
+        <div class="foot-actions">
+          <button id="introOpen" class="link" type="button">What is this?</button>
+          <a
+            class="link"
+            href="https://github.com/MotherTheresa64/RoleFinder"
+            target="_blank"
+            rel="noopener"
+            >Source</a
+          >
+        </div>
       </footer>
     </div>
 
     <dialog id="intro" class="intro" aria-labelledby="introTitle">
-      <div class="intro-head">
-        <h2 id="introTitle">This is one person's job search tool</h2>
+      <div class="intro-top">
+        <span class="intro-eyebrow">Personal build</span>
         <button class="intro-close" id="introClose" aria-label="Close" type="button">×</button>
       </div>
 
-      <p>
-        The postings are real, and every link goes to the company's own application page.
-        What is not generic is the <strong>order</strong>: scoring is tuned to a single
-        stack — React, TypeScript, Python, FastAPI, PostgreSQL — so the top of this list is
-        that person's best fit, not necessarily yours.
+      <h2 id="introTitle">Not a job board</h2>
+      <p class="intro-lead">
+        The postings are real and every link goes to the company's own application page.
+        Everything else here is tuned to one person.
       </p>
 
-      <p>
-        Listings are re-pulled from 33 company boards every day at 06:17 UTC, so a job that
-        closes drops off on the next refresh.
-      </p>
-
-      <p>
-        Application status you set here (applied, interview, rejected) is saved
-        <strong>in this browser only</strong>. It will not follow you to another device, it
-        is not shared with anyone, and clearing site data resets it. Jobs you mark applied
-        drop out of the list so they don't tempt a second application.
-      </p>
+      <ul class="intro-list">
+        <li>
+          <span class="intro-key">Ranking</span>
+          <span
+            >Scored against React, TypeScript, Python, FastAPI and PostgreSQL. What sits at
+            the top is a strong fit for them — not necessarily for you.</span
+          >
+        </li>
+        <li>
+          <span class="intro-key">Freshness</span>
+          <span
+            >Pulled from 33 company boards every day at 06:17 UTC. Roles that close fall off
+            on the next run.</span
+          >
+        </li>
+        <li>
+          <span class="intro-key">Status</span>
+          <span
+            >Applied, interview and rejected are saved in this browser only. They do not sync
+            anywhere, and clearing site data resets them. Anything marked applied drops out of
+            the list.</span
+          >
+        </li>
+      </ul>
 
       <div class="intro-actions">
-        <a class="ghost" href="https://github.com/MotherTheresa64/RoleFinder" target="_blank" rel="noopener">
-          View source
-        </a>
+        <a
+          class="ghost"
+          href="https://github.com/MotherTheresa64/RoleFinder"
+          target="_blank"
+          rel="noopener"
+          >View source</a
+        >
         <button class="primary" id="introGotIt" type="button">Got it</button>
       </div>
     </dialog>

@@ -165,7 +165,9 @@ export function stats() {
     SELECT
       COUNT(*) AS total,
       SUM(CASE WHEN remote = 1 THEN 1 ELSE 0 END) AS remote,
-      SUM(CASE WHEN score >= 35 THEN 1 ELSE 0 END) AS strong
+      SUM(CASE WHEN score >= 35 THEN 1 ELSE 0 END) AS strong,
+      MAX(fetched_at) AS updated,
+      COUNT(DISTINCT company) AS boards
     FROM jobs
   `).get();
 
@@ -182,6 +184,8 @@ export function stats() {
     total: totals.total ?? 0,
     remote: totals.remote ?? 0,
     strong: totals.strong ?? 0,
+    updated: totals.updated ?? null,
+    boards: totals.boards ?? 0,
     applied: byStatus.find((r) => r.status === 'applied')?.n ?? 0,
     byStatus,
     byCompany,

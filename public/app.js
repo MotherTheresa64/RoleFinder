@@ -4,10 +4,13 @@
 const MODE = { server: 'server', static: 'static' };
 const STATUS_KEY = 'rolefinder.statuses';
 const INTRO_KEY = 'rolefinder.introDismissed';
+const LIMIT = 200;
+
 const EXCLUSIONS = [
   'senior', 'sr.', 'staff', 'principal', 'lead',
   'manager', 'director', 'head of', 'architect',
 ];
+
 const STATUS_LABELS = {
   new: 'Not applied',
   applied: 'Applied',
@@ -16,11 +19,22 @@ const STATUS_LABELS = {
   offer: 'Offer',
 };
 
+// Strong = the number in the hero. Sections follow the same thresholds so the
+// counts on screen never disagree with each other.
+const TIERS = [
+  { min: 35, label: 'Strong matches' },
+  { min: 20, label: 'Worth a look' },
+  { min: 0, label: 'Long shots' },
+];
+
 const el = (id) => document.getElementById(id);
 const list = el('list');
+const skeleton = el('skeleton');
 const empty = el('empty');
-const statsEl = el('stats');
 const resultCount = el('resultCount');
+const heroStrong = el('heroStrong');
+const heroSub = el('heroSub');
+const freshnessLabel = el('freshnessLabel');
 const intro = el('intro');
 
 const q = el('q');
@@ -30,16 +44,20 @@ const hideSenior = el('hideSenior');
 const minScore = el('minScore');
 const scoreOut = el('scoreOut');
 const status = el('status');
+const resetFilters = el('resetFilters');
 
-const state = { mode: MODE.static, all: [], statuses: {} };
+const state = { mode: MODE.static, all: [], meta: null, statuses: {} };
 let timer = null;
+let firstRender = true;
 
-/** Both builds serve /config.json, so mode detection never probes a 404. */
+/* ---------- mode ---------- */
+
+/** Both builds serve /config.json, so detection never probes a 404. */
 async function detectMode() {
   try {
     const res = await fetch('/config.json', { cache: 'no-store' });
     if (!res.ok) return MODE.static;
-    if (!(res.headers.get('content-type') || '').includes('application/json')) return MODE.static;
+    if (!(res.headers.get('content-type') || '').includes('json')) return MODE.static;
     const config = await res.json();
     return config && config.api ? MODE.server : MODE.static;
   } catch {
@@ -70,15 +88,20 @@ function writeStored(key, value) {
 
 let snapshotRequest = null;
 
-/** The snapshot is the only source in static mode. One request, shared. */
+/** One request for the snapshot, shared by the list and the stats. */
 async function ensureSnapshot() {
   if (state.mode !== MODE.static || state.all.length) return;
 
   if (!snapshotRequest) {
-    snapshotRequest = fetch('/data/jobs.json', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((jobs) => {
-        state.all = jobs;
+    snapshotRequest = Promise.all([
+      fetch('/data/jobs.json', { cache: 'no-store' }).then((res) => res.json()),
+      fetch('/data/meta.json', { cache: 'no-store' })
+        .then((res) => (res.ok ? res.json() : null))
+        .catch(() => null),
+    ])
+      .then(([jobs, meta]) => {
+        state.all = Array.isArray(jobs) ? jobs : [];
+        state.meta = meta;
       })
       .catch(() => {
         state.all = [];
@@ -97,6 +120,12 @@ function filters() {
     minScore: Number(minScore.value) || 0,
     status: status.value,
   };
+}
+
+function isDefault(f) {
+  return (
+    !f.q && !f.remote && f.hideApplied && f.hideSenior && !f.minScore && !f.status
+  );
 }
 
 function matches(job, f) {
@@ -122,6 +151,7 @@ function matches(job, f) {
 
 async function loadJobs() {
   const f = filters();
+  resetFilters.hidden = isDefault(f);
 
   if (state.mode === MODE.server) {
     const params = new URLSearchParams();
@@ -131,7 +161,7 @@ async function loadJobs() {
     if (!f.hideApplied) params.set('hideApplied', '0');
     if (f.minScore > 0) params.set('minScore', String(f.minScore));
     if (f.status) params.set('status', f.status);
-    params.set('limit', '200');
+    params.set('limit', String(LIMIT));
 
     const res = await fetch(`/api/jobs?${params}`);
     const data = await res.json();
@@ -146,59 +176,98 @@ async function loadJobs() {
     status: state.statuses[job.id] || job.status || '',
   }));
 
-  render(withStatus.filter((job) => matches(job, f)).slice(0, 200));
+  render(withStatus.filter((job) => matches(job, f)).slice(0, LIMIT));
 }
 
 /* ---------- rendering ---------- */
 
 function render(jobs) {
+  skeleton.hidden = true;
   empty.hidden = jobs.length > 0;
-  const total = state.mode === MODE.server ? null : state.all.length;
+
+  const total = state.mode === MODE.static ? state.all.length : null;
   resultCount.textContent = total
-    ? `${jobs.length} shown${jobs.length === 200 ? '+' : ''} of ${total} postings`
+    ? `${jobs.length}${jobs.length === LIMIT ? '+' : ''} of ${total.toLocaleString()} postings`
     : `${jobs.length} matching postings`;
 
-  list.replaceChildren(...jobs.map(card));
+  const groups = TIERS.map((tier) => ({ ...tier, items: [] }));
+  for (const job of jobs) {
+    const tier = groups.find((group) => job.score >= group.min) ?? groups[groups.length - 1];
+    tier.items.push(job);
+  }
+
+  const nodes = [];
+  let index = 0;
+
+  for (const group of groups) {
+    if (!group.items.length) continue;
+
+    const header = document.createElement('div');
+    header.className = 'tier';
+    header.innerHTML = `<span>${group.label}</span><b>${group.items.length}</b>`;
+    nodes.push(header);
+
+    for (const job of group.items) nodes.push(card(job, index++));
+  }
+
+  list.replaceChildren(...nodes);
+
+  if (firstRender) {
+    list.classList.add('animate');
+    firstRender = false;
+  }
 }
 
-function card(job) {
+function card(job, index) {
   const article = document.createElement('article');
   article.className = 'job';
-  const current = job.status || '';
+  article.style.setProperty('--i', Math.min(index, 12));
 
-  if (current === 'applied') article.classList.add('is-applied');
-  if (current === 'interview') article.classList.add('is-interview');
-  if (current === 'rejected') article.classList.add('is-rejected');
+  const current = job.status || '';
+  if (current) article.classList.add(`is-${current}`);
 
   const match = matchInfo(job.score);
-  const tags = (job.matched || []).slice(0, 4);
-  const extra = Math.max((job.matched || []).length - tags.length, 0);
+  const tags = job.matched || [];
+  const shownTags = tags.slice(0, 4);
+  const extraTags = tags.slice(4);
   const days = ageInDays(job.posted_at);
 
   article.innerHTML = `
-    <div class="mono" style="--h:${hue(job.company)}" aria-hidden="true">${monogram(job.company)}</div>
-    <div class="job-main">
-      <div class="job-title">
+    <div class="tile" style="--h:${hue(job.company)}" aria-hidden="true">${monogram(job.company)}</div>
+    <div class="job-body">
+      <div class="job-head">
         <h2>${esc(job.title)}</h2>
-        ${days !== null && days <= 7 ? '<span class="fresh">New</span>' : ''}
+        ${days !== null && days <= 7 ? '<span class="new">New</span>' : ''}
       </div>
-      <p class="job-meta">
-        <span class="company">${esc(job.company)}</span>
-        ${job.location ? `<span class="dot-sep"></span><span>${esc(job.location)}</span>` : ''}
-        ${days !== null ? `<span class="dot-sep"></span><span>${relativeDate(days)}</span>` : ''}
-        ${job.remote ? '<span class="dot-sep"></span><span>Remote</span>' : ''}
+      <p class="meta">
+        <span class="co">${esc(job.company)}</span>
+        ${job.location ? `<span class="sep"></span><span>${esc(job.location)}</span>` : ''}
+        ${days !== null ? `<span class="sep"></span><span>${relativeDate(days)}</span>` : ''}
+        ${job.remote ? '<span class="sep"></span><span class="remote">Remote</span>' : ''}
       </p>
       <div class="tags">
-        ${tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}
-        ${extra ? `<span class="tag more">+${extra}</span>` : ''}
+        ${shownTags.map((tag) => `<span class="tag">${esc(tag)}</span>`).join('')}
+        ${
+          extraTags.length
+            ? `<details class="why">
+                 <summary>+${extraTags.length}</summary>
+                 <div class="why-body">${extraTags
+                   .map((tag) => `<span class="tag">${esc(tag)}</span>`)
+                   .join('')}</div>
+               </details>`
+            : ''
+        }
       </div>
     </div>
     <div class="job-side">
       <span class="match ${match.tone}">${match.label}</span>
-      <div class="job-actions">
+      <div class="actions">
         <select class="status-select" data-id="${esc(job.id)}" aria-label="Application status for ${esc(job.title)}">
           ${Object.entries(STATUS_LABELS)
-            .map(([value, label]) => `<option value="${value}" ${(current || 'new') === value ? 'selected' : ''}>${label}</option>`)
+            .map(
+              ([value, label]) =>
+                `<option value="${value}" ${(current || 'new') === value ? 'selected' : ''}>${label}</option>`,
+            )
             .join('')}
         </select>
         <a class="apply" href="${esc(job.url)}" target="_blank" rel="noopener">
@@ -236,43 +305,65 @@ async function setStatus(id, value) {
 
 async function loadStats() {
   if (state.mode === MODE.server) {
-    paint(await (await fetch('/api/stats')).json());
+    const stats = await (await fetch('/api/stats')).json();
+    paintHero(stats);
+    paintFreshness(stats.updated);
     return;
   }
 
   await ensureSnapshot();
 
-  paint({
-    total: state.all.length,
-    strong: state.all.filter((job) => job.score >= 35).length,
-    remote: state.all.filter((job) => job.remote).length,
-    applied: Object.values(state.statuses).filter((s) => s === 'applied').length,
+  const meta = state.meta || {};
+  paintHero({
+    total: meta.total ?? state.all.length,
+    remote: meta.remote ?? state.all.filter((job) => job.remote).length,
+    strong: meta.strong ?? state.all.filter((job) => job.score >= 35).length,
+    applied: Object.values(state.statuses).filter((value) => value === 'applied').length,
   });
+  paintFreshness(meta.builtAt);
 }
 
-function paint(s) {
-  statsEl.innerHTML = `
-    <div class="stat"><b>${s.total ?? 0}</b><span>postings</span></div>
-    <div class="stat"><b>${s.strong ?? 0}</b><span>strong matches</span></div>
-    <div class="stat"><b>${s.remote ?? 0}</b><span>remote</span></div>
-    <div class="stat"><b>${s.applied ?? 0}</b><span>applied</span></div>
-  `;
+function paintHero(stats) {
+  heroStrong.textContent = (stats.strong ?? 0).toLocaleString();
+  heroSub.innerHTML = `of <b>${num(stats.total)}</b> open roles · <b>${num(
+    stats.remote,
+  )}</b> remote · <b>${num(stats.applied)}</b> applied`;
+}
+
+function paintFreshness(value) {
+  if (!value) {
+    freshnessLabel.textContent = 'Updated daily';
+    return;
+  }
+
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) {
+    freshnessLabel.textContent = 'Updated daily';
+    return;
+  }
+
+  const hours = (Date.now() - then) / 3_600_000;
+  if (hours < 1) freshnessLabel.textContent = 'Updated just now';
+  else if (hours < 24) freshnessLabel.textContent = `Updated ${Math.floor(hours)}h ago`;
+  else freshnessLabel.textContent = `Updated ${Math.floor(hours / 24)}d ago`;
 }
 
 /* ---------- helpers ---------- */
 
 function matchInfo(score) {
-  if (score >= 55) return { label: 'Strong match', tone: 'strong' };
-  if (score >= 35) return { label: 'Good match', tone: 'good' };
+  if (score >= 55) return { label: 'Top match', tone: 'top' };
+  if (score >= 35) return { label: 'Strong match', tone: 'strong' };
   if (score >= 20) return { label: 'Worth a look', tone: 'fair' };
   return { label: 'Long shot', tone: 'low' };
 }
 
+function num(value) {
+  return (value ?? 0).toLocaleString();
+}
+
 function monogram(name) {
   const parts = String(name || '?').trim().split(/\s+/);
-  const first = parts[0]?.[0] ?? '?';
-  const second = parts[1]?.[0] ?? '';
-  return (first + second).toUpperCase();
+  return `${parts[0]?.[0] ?? '?'}${parts[1]?.[0] ?? ''}`.toUpperCase();
 }
 
 function hue(name) {
@@ -297,13 +388,13 @@ function relativeDate(days) {
 }
 
 function esc(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (c) => ({
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;',
-  })[c]);
+  })[char]);
 }
 
 function schedule() {
@@ -318,10 +409,27 @@ for (const node of [q, remote, hideApplied, hideSenior, status]) {
   node.addEventListener('change', schedule);
 }
 
-minScore.addEventListener('input', () => {
+function syncRange() {
   const value = Number(minScore.value);
-  scoreOut.textContent = value === 0 ? 'Any' : value;
+  const max = Number(minScore.max);
+  minScore.style.setProperty('--fill', `${(value / max) * 100}%`);
+  scoreOut.textContent = value === 0 ? 'Any' : `${value}+`;
+}
+
+minScore.addEventListener('input', () => {
+  syncRange();
   schedule();
+});
+
+resetFilters.addEventListener('click', () => {
+  q.value = '';
+  remote.checked = false;
+  hideApplied.checked = true;
+  hideSenior.checked = true;
+  minScore.value = '0';
+  status.value = '';
+  syncRange();
+  loadJobs();
 });
 
 function openIntro() {
@@ -348,6 +456,7 @@ intro.addEventListener('click', (event) => {
   state.all = [];
   document.body.dataset.mode = state.mode;
 
+  syncRange();
   await Promise.all([loadJobs(), loadStats()]);
 
   if (!readStored(INTRO_KEY, false)) openIntro();
