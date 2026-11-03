@@ -49,6 +49,7 @@ async function handleApi(req, res, url) {
       remote: url.searchParams.get('remote') === '1',
       minScore: Number(url.searchParams.get('minScore') ?? 0),
       hideSenior: url.searchParams.get('hideSenior') !== '0',
+      hideApplied: url.searchParams.get('hideApplied') !== '0',
       status: url.searchParams.get('status') ?? '',
       limit: Number(url.searchParams.get('limit') ?? 100),
     });

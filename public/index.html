@@ -3,48 +3,124 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0f1115" />
-    <meta name="description" content="Local job search tool: postings from company boards, scored and tracked." />
+    <meta name="theme-color" content="#0b0d12" />
+    <meta
+      name="description"
+      content="RoleFinder: postings from 33 company job boards, ranked against one person's stack. Updated daily."
+    />
     <title>RoleFinder</title>
     <link rel="manifest" href="/manifest.json" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <header class="top">
-      <div class="brand">
-        <span class="dot"></span>
-        <h1>RoleFinder</h1>
-        <span class="tag">you click submit</span>
-      </div>
-      <div class="stats" id="stats"></div>
-    </header>
+    <div class="aura" aria-hidden="true"></div>
 
-    <section class="controls">
-      <input id="q" type="search" placeholder="Search title, company, department" autocomplete="off" />
-      <div class="row">
-        <label class="check"><input id="remote" type="checkbox" /> Remote only</label>
-        <label class="check"><input id="hideSenior" type="checkbox" checked /> Hide senior titles</label>
-      </div>
-      <div class="row">
-        <label class="range">
-          Min score <output id="scoreOut">0</output>
-          <input id="minScore" type="range" min="0" max="100" step="5" value="0" />
-        </label>
-        <select id="status" aria-label="Filter by status">
+    <div class="page">
+      <header class="top">
+        <div class="brand">
+          <span class="mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="M15.8 15.8 21 21" stroke-linecap="round" />
+            </svg>
+          </span>
+          <div class="brand-text">
+            <h1>RoleFinder</h1>
+            <p>Open roles from 33 company boards, ranked against one stack.</p>
+          </div>
+        </div>
+        <div class="stats" id="stats" aria-live="polite"></div>
+      </header>
+
+      <section class="filters" aria-label="Filters">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="M15.8 15.8 21 21" stroke-linecap="round" />
+          </svg>
+          <input id="q" type="search" placeholder="Search role, company, or team" autocomplete="off" />
+        </div>
+
+        <div class="chips">
+          <label class="chip">
+            <input id="remote" type="checkbox" />
+            <span>Remote only</span>
+          </label>
+          <label class="chip">
+            <input id="hideApplied" type="checkbox" checked />
+            <span>Hide applied</span>
+          </label>
+          <label class="chip">
+            <input id="hideSenior" type="checkbox" checked />
+            <span>Hide senior</span>
+          </label>
+        </div>
+
+        <div class="match-filter">
+          <label for="minScore">Minimum match</label>
+          <input id="minScore" type="range" min="0" max="60" step="5" value="0" />
+          <output id="scoreOut" for="minScore">Any</output>
+        </div>
+
+        <select id="status" aria-label="Filter by application status">
           <option value="">Any status</option>
-          <option value="new">Not applied</option>
           <option value="applied">Applied</option>
           <option value="interview">Interview</option>
           <option value="rejected">Rejected</option>
           <option value="offer">Offer</option>
         </select>
-      </div>
-    </section>
+      </section>
 
-    <main id="list" class="list"></main>
-    <p id="empty" class="empty" hidden>
-      Nothing matched. Run <code>npm run ingest</code> for fresh postings, or loosen the filters.
-    </p>
+      <p class="result-line"><span id="resultCount"></span></p>
+
+      <main id="list" class="list"></main>
+
+      <div id="empty" class="empty" hidden>
+        <p class="empty-title">Nothing matches those filters</p>
+        <p>Try clearing the search, or run <code>npm run ingest</code> for a fresh pull.</p>
+      </div>
+
+      <footer class="foot">
+        <p>
+          Personal tool. Postings and links are public, but the ranking is tuned to one
+          profile — so it is not optimized for anyone else. Refreshed daily at 06:17 UTC.
+        </p>
+        <button id="introOpen" class="link" type="button">What is this?</button>
+      </footer>
+    </div>
+
+    <dialog id="intro" class="intro" aria-labelledby="introTitle">
+      <div class="intro-head">
+        <h2 id="introTitle">This is one person's job search tool</h2>
+        <button class="intro-close" id="introClose" aria-label="Close" type="button">×</button>
+      </div>
+
+      <p>
+        The postings are real, and every link goes to the company's own application page.
+        What is not generic is the <strong>order</strong>: scoring is tuned to a single
+        stack — React, TypeScript, Python, FastAPI, PostgreSQL — so the top of this list is
+        that person's best fit, not necessarily yours.
+      </p>
+
+      <p>
+        Listings are re-pulled from 33 company boards every day at 06:17 UTC, so a job that
+        closes drops off on the next refresh.
+      </p>
+
+      <p>
+        Application status you set here (applied, interview, rejected) is saved
+        <strong>in this browser only</strong>. It will not follow you to another device, it
+        is not shared with anyone, and clearing site data resets it. Jobs you mark applied
+        drop out of the list so they don't tempt a second application.
+      </p>
+
+      <div class="intro-actions">
+        <a class="ghost" href="https://github.com/MotherTheresa64/RoleFinder" target="_blank" rel="noopener">
+          View source
+        </a>
+        <button class="primary" id="introGotIt" type="button">Got it</button>
+      </div>
+    </dialog>
 
     <script type="module" src="/app.js"></script>
   </body>

@@ -3,7 +3,7 @@
   "short_name": "RoleFinder",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f1115",
-  "theme_color": "#0f1115",
-  "description": "Job postings from company boards, scored against your skills and tracked."
+  "background_color": "#0b0d12",
+  "theme_color": "#0b0d12",
+  "description": "Open roles from 33 company boards, ranked against one stack. Updated daily."
 }

@@ -92,6 +92,7 @@ export function listJobs({
   minScore = 0,
   hideSenior = true,
   status = '',
+  hideApplied = true,
   limit = 100,
 } = {}) {
   const where = [];
@@ -117,6 +118,10 @@ export function listJobs({
   } else if (status) {
     where.push('a.status = ?');
     params.push(status);
+  } else if (hideApplied) {
+    // Anything already acted on stays out of the default list, so a posting
+    // can't come back around later and tempt a second application.
+    where.push('a.status IS NULL');
   }
 
   const sql = `

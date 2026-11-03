@@ -7,6 +7,23 @@ a profile I control, and keeps track of which ones I have applied to.
 It does not submit applications. Two questions it answers: what is out there that fits,
 and where did I leave off.
 
+## Who this is for
+
+Me. This is a personal job search tool, not a public job board.
+
+The postings and the application links are real and public, but the ranking comes from
+`profile.json`, which describes one stack (React, TypeScript, Python, FastAPI/Flask,
+PostgreSQL). Anyone who opens the deployed site sees the same jobs in *my* order, not an
+order tuned to them. That is intentional, and the site says so on the first visit and
+again in the footer.
+
+The list hides anything already marked applied, interview, or rejected, so a posting
+cannot come back around and tempt a duplicate application. Status is saved per browser
+(and per SQLite database locally); it never reaches a server.
+
+It refreshes daily at 06:17 UTC, so it is a current snapshot rather than a live feed.
+Something posted this afternoon shows up on tomorrow's run.
+
 Runs two ways from the same code:
 
 - **Locally**, as a small Node server with SQLite. Application status is stored in the
@@ -52,7 +69,9 @@ is committed. A build with no database present falls back to that snapshot, so C
 needs network access or a database.
 
 The only behavioural difference in static mode: application status lives in the
-browser. Same browser, same device, persists across visits; it does not sync anywhere.
+browser. Same browser, same device, persists across visits; it does not sync anywhere
+and clearing site data resets it. The local server build keeps the same statuses in
+SQLite instead.
 
 ## Deploying (free tiers)
 
@@ -111,7 +130,7 @@ instead of guessing.
 ```
 companies.json          which boards to pull
 profile.json            skill weights and role keywords
-src/sources.mjs         Greenhouse and Ashby adapters, plus HTML cleanup
+src/sources.mjs         Greenhouse, Ashby and Lever adapters, plus HTML cleanup
 src/score.mjs           keyword scoring
 src/db.mjs              sqlite schema, upserts, queries
 src/ingest.mjs          CLI that ties the above together
@@ -134,6 +153,8 @@ API, when running locally: `GET /api/jobs`, `GET /api/stats`,
   more than adding more big ones.
 - No cross-company dedupe. The same role posted on two boards shows up twice.
 - Static mode keeps status in `localStorage`, so it does not follow you between devices.
+- Statuses are keyed by the board's job id. If a company closes and relists a role, it
+  gets a new id and looks like a new posting again.
 
 ## TODO
 
