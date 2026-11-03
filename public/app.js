@@ -1,3 +1,13 @@
+// Works in two modes: against the local API server, or as a static site
+// reading a JSON snapshot (Vercel / Firebase hosting have no Node server).
+
+const MODE = { server: 'server', static: 'static' };
+const STATUS_KEY = 'rolefinder.statuses';
+const EXCLUSIONS = [
+  'senior', 'sr.', 'staff', 'principal', 'lead',
+  'manager', 'director', 'head of', 'architect',
+];
+
 const list = document.getElementById('list');
 const empty = document.getElementById('empty');
 const statsEl = document.getElementById('stats');
@@ -9,45 +19,108 @@ const minScore = document.getElementById('minScore');
 const scoreOut = document.getElementById('scoreOut');
 const status = document.getElementById('status');
 
+const state = { mode: MODE.static, all: [], statuses: {} };
 let timer = null;
 
-function params() {
-  const search = new URLSearchParams();
-  if (q.value.trim()) search.set('q', q.value.trim());
-  if (remote.checked) search.set('remote', '1');
-  if (!hideSenior.checked) search.set('hideSenior', '0');
-  if (Number(minScore.value) > 0) search.set('minScore', minScore.value);
-  if (status.value) search.set('status', status.value);
-  search.set('limit', '150');
-  return search;
+/** The API returns JSON with {ok:true}; a static host may return index.html with 200. */
+async function detectMode() {
+  try {
+    const res = await fetch('/api/health', { cache: 'no-store' });
+    if (!res.ok) return MODE.static;
+    if (!(res.headers.get('content-type') || '').includes('application/json')) return MODE.static;
+    const data = await res.json();
+    return data && data.ok ? MODE.server : MODE.static;
+  } catch {
+    return MODE.static;
+  }
+}
+
+function readStoredStatuses() {
+  try {
+    return JSON.parse(localStorage.getItem(STATUS_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredStatuses(map) {
+  try {
+    localStorage.setItem(STATUS_KEY, JSON.stringify(map));
+  } catch {
+    /* private mode, ignore */
+  }
+}
+
+function filters() {
+  return {
+    q: q.value.trim().toLowerCase(),
+    remote: remote.checked,
+    hideSenior: hideSenior.checked,
+    minScore: Number(minScore.value) || 0,
+    status: status.value,
+  };
+}
+
+function matches(job, f) {
+  if (f.remote && !job.remote) return false;
+  if (f.minScore > 0 && job.score < f.minScore) return false;
+  if (f.hideSenior) {
+    const title = job.title.toLowerCase();
+    if (EXCLUSIONS.some((word) => title.includes(word))) return false;
+  }
+  if (f.q) {
+    const haystack = `${job.title} ${job.company} ${job.department || ''}`.toLowerCase();
+    if (!haystack.includes(f.q)) return false;
+  }
+  if (f.status) {
+    const current = job.status || 'new';
+    if (f.status !== current) return false;
+  }
+  return true;
 }
 
 async function loadJobs() {
-  const res = await fetch(`/api/jobs?${params()}`);
-  const data = await res.json();
-  render(data.jobs ?? []);
-  empty.hidden = (data.jobs ?? []).length > 0;
-}
+  const f = filters();
 
-async function loadStats() {
-  const res = await fetch('/api/stats');
-  const s = await res.json();
-  statsEl.innerHTML = `
-    <span><b>${s.total}</b> postings</span>
-    <span><b>${s.strong}</b> strong matches</span>
-    <span><b>${s.remote}</b> remote</span>
-    <span><b>${s.applied}</b> applied</span>
-  `;
+  if (state.mode === MODE.server) {
+    const params = new URLSearchParams();
+    if (f.q) params.set('q', f.q);
+    if (f.remote) params.set('remote', '1');
+    if (!f.hideSenior) params.set('hideSenior', '0');
+    if (f.minScore > 0) params.set('minScore', String(f.minScore));
+    if (f.status) params.set('status', f.status);
+    params.set('limit', '150');
+
+    const res = await fetch(`/api/jobs?${params}`);
+    const data = await res.json();
+    render(data.jobs || []);
+    return;
+  }
+
+  if (!state.all.length) {
+    const res = await fetch('/data/jobs.json', { cache: 'no-store' });
+    state.all = await res.json();
+  }
+
+  const withStatus = state.all.map((job) => ({
+    ...job,
+    status: state.statuses[job.id] || job.status || '',
+  }));
+
+  render(withStatus.filter((job) => matches(job, f)).slice(0, 150));
 }
 
 function render(jobs) {
+  empty.hidden = jobs.length > 0;
+
   list.replaceChildren(
     ...jobs.map((job) => {
       const card = document.createElement('article');
       card.className = 'card';
-      if (job.status === 'applied') card.classList.add('is-applied');
-      if (job.status === 'interview') card.classList.add('is-interview');
-      if (job.status === 'rejected') card.classList.add('is-rejected');
+      const current = job.status || '';
+      if (current === 'applied') card.classList.add('is-applied');
+      if (current === 'interview') card.classList.add('is-interview');
+      if (current === 'rejected') card.classList.add('is-rejected');
 
       const scoreClass = job.score >= 50 ? 'high' : job.score >= 25 ? 'mid' : 'low';
 
@@ -59,17 +132,14 @@ function render(jobs) {
             <span class="company">${esc(job.company)}</span>
             ${job.location ? `<span>· ${esc(job.location)}</span>` : ''}
             ${job.remote ? '<span class="pill remote">remote</span>' : ''}
-            ${job.posted_at ? `<span>· ${formatDate(job.posted_at)}</span>` : ''}
+            ${job.posted_at ? `<span>· ${esc(formatDate(job.posted_at))}</span>` : ''}
           </p>
-          <p class="matched">${(job.matched ?? []).slice(0, 8).map((m) => `<span>${esc(m)}</span>`).join('')}</p>
+          <p class="matched">${(job.matched || []).slice(0, 8).map((m) => `<span>${esc(m)}</span>`).join('')}</p>
         </div>
         <div class="actions">
-          <select data-id="${esc(job.id)}" class="status-select">
+          <select data-id="${esc(job.id)}" class="status-select" aria-label="Application status">
             ${['new', 'applied', 'interview', 'rejected', 'offer']
-              .map(
-                (s) =>
-                  `<option value="${s}" ${(job.status || 'new') === s ? 'selected' : ''}>${label(s)}</option>`,
-              )
+              .map((s) => `<option value="${s}" ${(current || 'new') === s ? 'selected' : ''}>${label(s)}</option>`)
               .join('')}
           </select>
           <a class="open" href="${esc(job.url)}" target="_blank" rel="noopener">Open posting →</a>
@@ -77,12 +147,7 @@ function render(jobs) {
       `;
 
       card.querySelector('.status-select').addEventListener('change', async (event) => {
-        await fetch(`/api/jobs/${encodeURIComponent(job.id)}/status`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ status: event.target.value }),
-        });
-        await Promise.all([loadJobs(), loadStats()]);
+        await setStatus(job.id, event.target.value);
       });
 
       return card;
@@ -90,14 +155,55 @@ function render(jobs) {
   );
 }
 
-function label(status) {
+async function setStatus(id, value) {
+  if (state.mode === MODE.server) {
+    await fetch(`/api/jobs/${encodeURIComponent(id)}/status`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ status: value }),
+    });
+  } else {
+    if (value === 'new') delete state.statuses[id];
+    else state.statuses[id] = value;
+    writeStoredStatuses(state.statuses);
+  }
+
+  await Promise.all([loadJobs(), loadStats()]);
+}
+
+async function loadStats() {
+  if (state.mode === MODE.server) {
+    const res = await fetch('/api/stats');
+    paintStats(await res.json());
+    return;
+  }
+
+  const totals = {
+    total: state.all.length,
+    remote: state.all.filter((j) => j.remote).length,
+    strong: state.all.filter((j) => j.score >= 35).length,
+    applied: state.all.filter((j) => state.statuses[j.id] === 'applied').length,
+  };
+  paintStats(totals);
+}
+
+function paintStats(s) {
+  statsEl.innerHTML = `
+    <span><b>${s.total ?? 0}</b> postings</span>
+    <span><b>${s.strong ?? 0}</b> strong matches</span>
+    <span><b>${s.remote ?? 0}</b> remote</span>
+    <span><b>${s.applied ?? 0}</b> applied</span>
+  `;
+}
+
+function label(value) {
   return {
     new: 'Not applied',
     applied: 'Applied',
     interview: 'Interview',
     rejected: 'Rejected',
     offer: 'Offer',
-  }[status] ?? status;
+  }[value] || value;
 }
 
 function formatDate(value) {
@@ -118,7 +224,7 @@ function esc(value) {
 
 function schedule() {
   clearTimeout(timer);
-  timer = setTimeout(loadJobs, 220);
+  timer = setTimeout(loadJobs, 200);
 }
 
 for (const el of [q, remote, hideSenior, status]) {
@@ -131,5 +237,9 @@ minScore.addEventListener('input', () => {
   schedule();
 });
 
-loadJobs();
-loadStats();
+(async function start() {
+  state.mode = await detectMode();
+  state.statuses = readStoredStatuses();
+  document.body.dataset.mode = state.mode;
+  await Promise.all([loadJobs(), loadStats()]);
+})();

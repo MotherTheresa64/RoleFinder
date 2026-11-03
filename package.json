@@ -2,7 +2,7 @@
   "name": "rolefinder",
   "version": "0.1.0",
   "private": true,
-  "description": "Local job search tool for company ATS boards. Pulls postings from Greenhouse and Ashby, scores them against a skill profile, and tracks applications.",
+  "description": "Job search tool for company ATS boards. Pulls postings from Greenhouse and Ashby, scores them against a skill profile, and tracks applications.",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -11,6 +11,9 @@
     "start": "node src/server.mjs",
     "ingest": "node src/ingest.mjs",
     "reset": "node src/ingest.mjs --reset",
-    "check": "node --check src/server.mjs && node --check src/ingest.mjs && node --check src/db.mjs && node --check src/sources.mjs && node --check src/score.mjs"
+    "build": "node scripts/build-static.mjs",
+    "build:live": "npm run ingest && npm run build",
+    "preview": "node scripts/serve-static.mjs",
+    "check": "node --check src/server.mjs && node --check src/ingest.mjs && node --check src/db.mjs && node --check src/sources.mjs && node --check src/score.mjs && node --check scripts/build-static.mjs && node --check scripts/serve-static.mjs"
   }
 }
