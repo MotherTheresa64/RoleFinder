@@ -25,6 +25,12 @@ const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
+    // The static build ships config.json with {api:false}; this answers {api:true}
+    // so the client can pick a mode without probing a 404 and logging an error.
+    if (url.pathname === '/config.json') {
+      return json(res, 200, { api: true });
+    }
+
     if (url.pathname.startsWith('/api/')) {
       return await handleApi(req, res, url);
     }

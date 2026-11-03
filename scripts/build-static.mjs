@@ -55,6 +55,9 @@ const stats = {
 
 await writeFile(resolve(DIST, 'data', 'stats.json'), JSON.stringify(stats));
 
+// Tells the client there is no API behind this build.
+await writeFile(resolve(DIST, 'config.json'), JSON.stringify({ api: false }));
+
 console.log(`source: ${source}`);
 console.log(`jobs written: ${jobs.length} (${stats.remote} remote)`);
 console.log('output: dist/');

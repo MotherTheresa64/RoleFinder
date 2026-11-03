@@ -22,25 +22,40 @@ const status = document.getElementById('status');
 const state = { mode: MODE.static, all: [], statuses: {} };
 let timer = null;
 
-/** The API returns JSON with {ok:true}; a static host may return index.html with 200. */
+/** Both builds serve /config.json, so mode detection never probes a 404 and never
+ *  guesses from a 200 that is really index.html. */
 async function detectMode() {
   try {
-    const res = await fetch('/api/health', { cache: 'no-store' });
+    const res = await fetch('/config.json', { cache: 'no-store' });
     if (!res.ok) return MODE.static;
     if (!(res.headers.get('content-type') || '').includes('application/json')) return MODE.static;
-    const data = await res.json();
-    return data && data.ok ? MODE.server : MODE.static;
+    const config = await res.json();
+    return config && config.api ? MODE.server : MODE.static;
   } catch {
     return MODE.static;
   }
 }
 
 /** Static mode has no API, so the snapshot is the only source. Both the list and
- *  the stats depend on it, and stats used to paint zeros before it arrived. */
+ *  the stats depend on it. The request is memoized so the two callers share one
+ *  download instead of each pulling the whole file. */
+let snapshotRequest = null;
+
 async function ensureStaticData() {
   if (state.mode !== MODE.static || state.all.length) return;
-  const res = await fetch('/data/jobs.json', { cache: 'no-store' });
-  state.all = await res.json();
+
+  if (!snapshotRequest) {
+    snapshotRequest = fetch('/data/jobs.json', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((jobs) => {
+        state.all = jobs;
+      })
+      .catch(() => {
+        state.all = [];
+      });
+  }
+
+  await snapshotRequest;
 }
 
 function readStoredStatuses() {
