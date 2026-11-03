@@ -1,7 +1,7 @@
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve } from 'node:path';
-import { listJobs, getJob, setStatus, stats } from './db.mjs';
+import { listJobs, getJob, setStatus, clearStatus, stats } from './db.mjs';
 
 // Some shells export PORT=0; treat anything non-positive as "use the default".
 const envPort = Number(process.env.PORT);
@@ -19,7 +19,7 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
-const VALID_STATUSES = new Set(['', 'applied', 'interview', 'rejected', 'offer']);
+const VALID_STATUSES = new Set(['', 'new', 'applied', 'interview', 'rejected', 'offer']);
 
 const server = createServer(async (req, res) => {
   try {
@@ -66,7 +66,13 @@ async function handleApi(req, res, url) {
       return json(res, 404, { error: 'unknown job' });
     }
 
-    setStatus(jobId, status || 'new');
+    // "new" means no application row at all, which keeps the status filter simple.
+    if (!status || status === 'new') {
+      clearStatus(jobId);
+    } else {
+      setStatus(jobId, status);
+    }
+
     return json(res, 200, { ok: true, id: jobId, status: status || 'new' });
   }
 

@@ -151,6 +151,10 @@ export function setStatus(jobId, status) {
   return true;
 }
 
+export function clearStatus(jobId) {
+  db.prepare('DELETE FROM applications WHERE job_id = ?').run(jobId);
+}
+
 export function stats() {
   const totals = db.prepare(`
     SELECT
