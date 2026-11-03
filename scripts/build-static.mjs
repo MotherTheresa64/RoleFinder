@@ -23,7 +23,7 @@ if (existsSync(DB_PATH)) {
              j.department, j.url, j.posted_at, j.score, j.matched, a.status
       FROM jobs j
       LEFT JOIN applications a ON a.job_id = j.id
-      ORDER BY j.score DESC, j.posted_at DESC
+      ORDER BY j.score DESC, j.posted_at DESC, j.id ASC
     `)
     .all();
 

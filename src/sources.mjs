@@ -63,9 +63,42 @@ export async function fetchAshby(company) {
   });
 }
 
+/** Lever exposes a public posting feed per company (mode=json returns an array). */
+export async function fetchLever(company) {
+  const url = `https://api.lever.co/v0/postings/${company.slug}?mode=json`;
+  const data = await fetchJson(url);
+
+  if (!Array.isArray(data)) {
+    throw new Error('unexpected response shape (expected an array)');
+  }
+
+  return data
+    .filter((job) => job && job.text)
+    .map((job) => {
+      const location = clean(job.categories?.location ?? '');
+      const workplace = String(job.workplaceType ?? '');
+      const remote = /remote/i.test(workplace) || /remote/i.test(location);
+
+      return {
+        id: `lever:${company.slug}:${job.id}`,
+        provider: 'lever',
+        company: company.name,
+        title: clean(job.text),
+        location,
+        remote,
+        department: clean(job.categories?.team ?? ''),
+        employment_type: clean(job.categories?.commitment ?? ''),
+        url: job.hostedUrl ?? '',
+        posted_at: job.createdAt ? new Date(job.createdAt).toISOString() : '',
+        description: stripHtml(job.descriptionPlain ?? job.description ?? ''),
+      };
+    });
+}
+
 export const PROVIDERS = {
   greenhouse: fetchGreenhouse,
   ashby: fetchAshby,
+  lever: fetchLever,
 };
 
 export function stripHtml(input) {

@@ -70,8 +70,14 @@ firebase deploy --only hosting
 `firebase.json` points at `dist`. Both hosts serve the same files, so either one is a
 preview URL you can look at on a phone.
 
-Data refreshes when you run `npm run ingest && npm run build` and push the updated
-snapshot. A scheduled GitHub Action could do that daily; it is not wired up yet.
+## Keeping the deployed copy current
+
+`.github/workflows/refresh.yml` runs daily at 06:17 UTC: it re-ingests every company and
+commits `snapshot/jobs.json` if anything changed. That push triggers the Vercel deploy on
+its own. Firebase needs `npm run deploy:firebase` again, or a deploy hook if you want it
+fully automatic.
+
+You can also run it by hand from the Actions tab, or with `gh workflow run refresh.yml`.
 
 ## Adding companies
 
@@ -81,11 +87,12 @@ Everything lives in `companies.json`:
 { "name": "Linear", "provider": "ashby", "slug": "linear" }
 ```
 
-`provider` is `greenhouse` or `ashby`. The slug is the company identifier in the board
-URL:
+`provider` is `greenhouse`, `ashby`, or `lever`. The slug is the company identifier in
+the board URL:
 
 - Greenhouse: `boards.greenhouse.io/<slug>` → `boards-api.greenhouse.io/v1/boards/<slug>/jobs`
 - Ashby: `jobs.ashbyhq.com/<slug>` → `api.ashbyhq.com/posting-api/job-board/<slug>`
+- Lever: `jobs.lever.co/<slug>` → `api.lever.co/v0/postings/<slug>?mode=json`
 
 A bad slug fails that one source and prints the error; the rest of the run continues.
 
@@ -111,6 +118,7 @@ src/ingest.mjs          CLI that ties the above together
 src/server.mjs          http server, json API, static files
 scripts/build-static.mjs   emits dist/ and refreshes the snapshot
 scripts/serve-static.mjs   static preview server
+.github/workflows/refresh.yml   daily snapshot refresh
 public/                 ui (plain es modules, no bundler)
 ```
 
@@ -119,7 +127,7 @@ API, when running locally: `GET /api/jobs`, `GET /api/stats`,
 
 ## Known limits
 
-- No Lever or Workable adapter yet. Both publish public endpoints too, so they are next.
+- No Workable adapter yet. It publishes a public endpoint too, so it is next.
 - Scoring is keyword based. It does not know that Django and Flask are similar, only the
   words in `profile.json`.
 - Large company boards almost never list junior roles. Adding smaller companies matters
@@ -129,9 +137,8 @@ API, when running locally: `GET /api/jobs`, `GET /api/stats`,
 
 ## TODO
 
-- [ ] Lever adapter
 - [ ] Saved filter presets
 - [ ] Draft resume bullets per posting
 - [ ] Follow-up reminder for anything applied more than 10 days ago
 - [ ] CSV export of application history
-- [ ] Scheduled refresh so the deployed build stays current
+- [ ] Workable adapter
