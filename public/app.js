@@ -35,6 +35,14 @@ async function detectMode() {
   }
 }
 
+/** Static mode has no API, so the snapshot is the only source. Both the list and
+ *  the stats depend on it, and stats used to paint zeros before it arrived. */
+async function ensureStaticData() {
+  if (state.mode !== MODE.static || state.all.length) return;
+  const res = await fetch('/data/jobs.json', { cache: 'no-store' });
+  state.all = await res.json();
+}
+
 function readStoredStatuses() {
   try {
     return JSON.parse(localStorage.getItem(STATUS_KEY) || '{}');
@@ -97,10 +105,7 @@ async function loadJobs() {
     return;
   }
 
-  if (!state.all.length) {
-    const res = await fetch('/data/jobs.json', { cache: 'no-store' });
-    state.all = await res.json();
-  }
+  await ensureStaticData();
 
   const withStatus = state.all.map((job) => ({
     ...job,
@@ -177,6 +182,8 @@ async function loadStats() {
     paintStats(await res.json());
     return;
   }
+
+  await ensureStaticData();
 
   const totals = {
     total: state.all.length,
