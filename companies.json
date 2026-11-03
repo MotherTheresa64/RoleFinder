@@ -19,7 +19,7 @@
     { "name": "SeatGeek", "provider": "greenhouse", "slug": "seatgeek" },
     { "name": "Warp", "provider": "greenhouse", "slug": "warp" },
     { "name": "Linear", "provider": "ashby", "slug": "linear" },
-    { "name": "Vercel", "provider": "ashby", "slug": "vercel" },
+    { "name": "Vercel", "provider": "greenhouse", "slug": "vercel" },
     { "name": "Clerk", "provider": "ashby", "slug": "clerk" },
     { "name": "Resend", "provider": "ashby", "slug": "resend" },
     { "name": "PostHog", "provider": "ashby", "slug": "posthog" },
