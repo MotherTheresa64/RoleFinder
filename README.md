@@ -14,6 +14,11 @@ Runs two ways from the same code:
 - **Statically**, as plain files that deploy to Vercel or Firebase Hosting for free. The
   page reads a JSON snapshot and keeps status in `localStorage`.
 
+## Live
+
+- Vercel: https://rolefinder-xi.vercel.app
+- Firebase: https://rolefinder-bcb3c.web.app
+
 ## Running locally
 
 Node 22 or newer. No dependencies, no build step: it uses the built-in `node:sqlite`
