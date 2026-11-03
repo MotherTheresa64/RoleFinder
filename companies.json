@@ -1,0 +1,16 @@
+{
+  "companies": [
+    { "name": "Stripe", "provider": "greenhouse", "slug": "stripe" },
+    { "name": "Figma", "provider": "greenhouse", "slug": "figma" },
+    { "name": "Duolingo", "provider": "greenhouse", "slug": "duolingo" },
+    { "name": "Reddit", "provider": "greenhouse", "slug": "reddit" },
+    { "name": "Discord", "provider": "greenhouse", "slug": "discord" },
+    { "name": "Robinhood", "provider": "greenhouse", "slug": "robinhood" },
+    { "name": "Airtable", "provider": "greenhouse", "slug": "airtable" },
+    { "name": "Asana", "provider": "greenhouse", "slug": "asana" },
+    { "name": "Linear", "provider": "ashby", "slug": "linear" },
+    { "name": "Vercel", "provider": "ashby", "slug": "vercel" },
+    { "name": "Clerk", "provider": "ashby", "slug": "clerk" },
+    { "name": "Resend", "provider": "ashby", "slug": "resend" }
+  ]
+}

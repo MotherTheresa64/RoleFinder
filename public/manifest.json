@@ -1,0 +1,9 @@
+{
+  "name": "RoleFinder",
+  "short_name": "RoleFinder",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1115",
+  "theme_color": "#0f1115",
+  "description": "Job postings from company boards, scored against your skills and tracked."
+}

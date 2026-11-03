@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f1115" />
+    <meta name="description" content="Local job search tool: postings from company boards, scored and tracked." />
+    <title>RoleFinder</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <span class="dot"></span>
+        <h1>RoleFinder</h1>
+        <span class="tag">you click submit</span>
+      </div>
+      <div class="stats" id="stats"></div>
+    </header>
+
+    <section class="controls">
+      <input id="q" type="search" placeholder="Search title, company, department" autocomplete="off" />
+      <div class="row">
+        <label class="check"><input id="remote" type="checkbox" /> Remote only</label>
+        <label class="check"><input id="hideSenior" type="checkbox" checked /> Hide senior titles</label>
+      </div>
+      <div class="row">
+        <label class="range">
+          Min score <output id="scoreOut">0</output>
+          <input id="minScore" type="range" min="0" max="100" step="5" value="0" />
+        </label>
+        <select id="status" aria-label="Filter by status">
+          <option value="">Any status</option>
+          <option value="new">Not applied</option>
+          <option value="applied">Applied</option>
+          <option value="interview">Interview</option>
+          <option value="rejected">Rejected</option>
+          <option value="offer">Offer</option>
+        </select>
+      </div>
+    </section>
+
+    <main id="list" class="list"></main>
+    <p id="empty" class="empty" hidden>
+      Nothing matched. Run <code>npm run ingest</code> for fresh postings, or loosen the filters.
+    </p>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
