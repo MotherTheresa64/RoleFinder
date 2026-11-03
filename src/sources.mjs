@@ -39,8 +39,13 @@ export async function fetchAshby(company) {
   const jobs = Array.isArray(data.jobs) ? data.jobs : [];
 
   return jobs.map((job) => {
+    // secondaryLocations is an array of objects: { location: "San Francisco", address: {...} }
+    const secondary = (job.secondaryLocations ?? [])
+      .map((entry) => (typeof entry === 'string' ? entry : entry?.location ?? ''))
+      .filter(Boolean);
+
     const location = clean(
-      [job.location, ...(job.secondaryLocations ?? [])].filter(Boolean).join(' · '),
+      [...new Set([job.location, ...secondary].filter(Boolean))].join(' · '),
     );
     const remote =
       Boolean(job.isRemote) ||
