@@ -1,7 +1,7 @@
 # RoleFinder
 
-A job search tool. It pulls open roles from company job boards (Greenhouse and Ashby
-both publish free public endpoints), stores them in SQLite locally, scores them against
+A job search tool. It pulls open roles from company job boards (Greenhouse, Ashby and Lever
+all publish free public endpoints), stores them in SQLite locally, scores them against
 a profile I control, and keeps track of which ones I have applied to.
 
 It does not submit applications. Two questions it answers: what is out there that fits,

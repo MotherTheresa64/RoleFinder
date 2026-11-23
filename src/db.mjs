@@ -109,8 +109,10 @@ export function listJobs({
     params.push(minScore);
   }
   if (hideSenior) {
-    where.push(`NOT (${EXCLUSIONS.map(() => 'LOWER(j.title) LIKE ?').join(' OR ')})`);
-    for (const term of EXCLUSIONS) params.push(`%${term}%`);
+    // Pad and turn punctuation into spaces so terms match whole words only ("staff" not "Staffing").
+    const words = `(' ' || REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(j.title), ',', ' '), '(', ' '), ')', ' '), '/', ' '), '-', ' ') || ' ')`;
+    where.push(`NOT (${EXCLUSIONS.map(() => `${words} LIKE ?`).join(' OR ')})`);
+    for (const term of EXCLUSIONS) params.push(`% ${term} %`);
   }
   if (status === 'new') {
     // "new" means the job has no row in applications yet.

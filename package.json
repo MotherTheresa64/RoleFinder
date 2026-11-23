@@ -2,7 +2,7 @@
   "name": "rolefinder",
   "version": "0.1.0",
   "private": true,
-  "description": "Job search tool for company ATS boards. Pulls postings from Greenhouse and Ashby, scores them against a skill profile, and tracks applications.",
+  "description": "Job search tool for company ATS boards. Pulls postings from Greenhouse, Ashby and Lever, scores them against a skill profile, and tracks applications.",
   "type": "module",
   "engines": {
     "node": ">=22"

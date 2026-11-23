@@ -13,27 +13,27 @@ export function scoreJob(job, profile) {
   let score = 0;
 
   for (const [skill, weight] of Object.entries(profile.skills ?? {})) {
-    if (title.includes(skill)) {
+    if (hasTerm(title, skill)) {
       score += weight * 2;
       matched.add(skill);
-    } else if (full.includes(skill)) {
+    } else if (hasTerm(full, skill)) {
       score += weight;
       matched.add(skill);
     }
   }
 
   for (const [keyword, weight] of Object.entries(profile.roleKeywords ?? {})) {
-    if (title.includes(keyword)) {
+    if (hasTerm(title, keyword)) {
       score += weight * 2;
       matched.add(keyword);
-    } else if (dept.includes(keyword)) {
+    } else if (hasTerm(dept, keyword)) {
       score += weight;
       matched.add(keyword);
     }
   }
 
   for (const [term, penalty] of Object.entries(profile.seniorityPenalty ?? {})) {
-    if (title.includes(term)) score += penalty;
+    if (hasTerm(title, term)) score += penalty;
   }
 
   // Reward postings that look remote-friendly when the body says so.
@@ -43,6 +43,15 @@ export function scoreJob(job, profile) {
     score: clamp(Math.round(score), 0, 100),
     matched: [...matched].slice(0, 12),
   };
+}
+
+/**
+ * Whole-word match: "staff" must not hit "Staffing", nor "git" hit "Digital".
+ * Uses alphanumeric lookarounds instead of \b so terms like "c++" and "sr." still work.
+ */
+export function hasTerm(text, term) {
+  const escaped = term.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`).test(text);
 }
 
 function clamp(value, min, max) {

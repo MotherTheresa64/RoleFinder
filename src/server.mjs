@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import { listJobs, getJob, setStatus, clearStatus, stats } from './db.mjs';
 
 // Some shells export PORT=0; treat anything non-positive as "use the default".
@@ -62,6 +62,10 @@ async function handleApi(req, res, url) {
 
   const statusMatch = url.pathname.match(/^\/api\/jobs\/(.+)\/status$/);
   if (statusMatch && req.method === 'POST') {
+    // A cross-site page can only send JSON after a CORS preflight, which this server never grants.
+    if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) {
+      return json(res, 415, { error: 'expected application/json' });
+    }
     const jobId = decodeURIComponent(statusMatch[1]);
     const body = await readBody(req);
     const status = String(body.status ?? '');
@@ -91,10 +95,15 @@ async function handleApi(req, res, url) {
 }
 
 async function serveStatic(res, pathname) {
-  const relative = normalize(decodeURIComponent(pathname === '/' ? '/index.html' : pathname));
+  let relative;
+  try {
+    relative = normalize(decodeURIComponent(pathname === '/' ? '/index.html' : pathname));
+  } catch {
+    return json(res, 400, { error: 'bad path' });
+  }
   const filePath = join(PUBLIC_DIR, relative);
 
-  if (!filePath.startsWith(PUBLIC_DIR)) {
+  if (!filePath.startsWith(PUBLIC_DIR + sep)) {
     return json(res, 403, { error: 'forbidden' });
   }
 

@@ -20,7 +20,7 @@ if (existsSync(DB_PATH)) {
   const rows = db
     .prepare(`
       SELECT j.id, j.provider, j.company, j.title, j.location, j.remote,
-             j.department, j.url, j.posted_at, j.score, j.matched, a.status
+             j.department, j.url, j.posted_at, j.score, j.matched
       FROM jobs j
       LEFT JOIN applications a ON a.job_id = j.id
       ORDER BY j.score DESC, j.posted_at DESC, j.id ASC

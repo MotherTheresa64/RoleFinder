@@ -134,7 +134,7 @@ function matches(job, f) {
 
   if (f.hideSenior) {
     const title = job.title.toLowerCase();
-    if (EXCLUSIONS.some((word) => title.includes(word))) return false;
+    if (EXCLUSIONS.some((word) => new RegExp(`(?<![a-z0-9])${word.replace('.', '\\.')}(?![a-z0-9])`).test(title))) return false;
   }
 
   if (f.q) {
@@ -270,7 +270,7 @@ function card(job, index) {
             )
             .join('')}
         </select>
-        <a class="apply" href="${esc(job.url)}" target="_blank" rel="noopener">
+        <a class="apply" href="${esc(safeUrl(job.url))}" target="_blank" rel="noopener">
           Apply
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
             <path d="M7 17 17 7M9 7h8v8" stroke-linecap="round" stroke-linejoin="round" />
@@ -385,6 +385,11 @@ function relativeDate(days) {
   if (days < 14) return `${days}d ago`;
   if (days < 60) return `${Math.floor(days / 7)}w ago`;
   return `${Math.floor(days / 30)}mo ago`;
+}
+
+// Job links come from third-party boards: only http(s) may become an href.
+function safeUrl(value) {
+  return /^https?:\/\//i.test(String(value)) ? value : '#';
 }
 
 function esc(value) {

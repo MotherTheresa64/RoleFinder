@@ -42,7 +42,7 @@ for (const company of targets) {
     let stored = 0;
 
     for (const job of jobs) {
-      if (!job.title || !job.url) continue;
+      if (!job.title || !/^https?:\/\//i.test(String(job.url ?? ''))) continue;
       const { score, matched } = scoreJob(job, profile);
       upsertJob({ ...job, score, matched, fetched_at: fetchedAt });
       stored += 1;

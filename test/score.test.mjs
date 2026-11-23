@@ -68,3 +68,14 @@ test('missing or unexpected job fields do not throw', () => {
   assert.deepEqual(scoreJob({}, profile), { score: 0, matched: [] });
   assert.equal(scoreJob({ title: null, description: undefined }, profile).score, 0);
 });
+
+test('terms match whole words only', async () => {
+  const { hasTerm } = await import('../src/score.mjs');
+  assert.equal(hasTerm('staffing coordinator', 'staff'), false);
+  assert.equal(hasTerm('digital products', 'git'), false);
+  assert.equal(hasTerm('international sales', 'intern'), false);
+  assert.equal(hasTerm('staff engineer', 'staff'), true);
+  assert.equal(hasTerm('sr. engineer', 'sr.'), true);
+  assert.equal(hasTerm('c++ / ci/cd', 'ci/cd'), true);
+  assert.equal(hasTerm('react.js developer', 'react'), true);
+});
