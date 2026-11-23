@@ -68,6 +68,7 @@ async function handleApi(req, res, url) {
     }
     const jobId = decodeURIComponent(statusMatch[1]);
     const body = await readBody(req);
+    if (body === null) return json(res, 400, { error: 'invalid JSON' });
     const status = String(body.status ?? '');
 
     if (!VALID_STATUSES.has(status)) {
@@ -142,7 +143,8 @@ function readBody(req) {
       try {
         resolveBody(raw ? JSON.parse(raw) : {});
       } catch {
-        resolveBody({});
+        // Malformed JSON must not read as an empty status, which would clear the job's status.
+        resolveBody(null);
       }
     });
     req.on('error', rejectBody);
